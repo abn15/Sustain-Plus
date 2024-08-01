@@ -45,7 +45,6 @@ def feature_engineering(esg_data, sentiment_data, price_data):
     return merged_data
 
 def train_model(data):
-    # Drop non-numeric columns for training
     numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
     X = data[numeric_cols].drop(columns=['RecommendationScore'])
     y = data['RecommendationScore']
@@ -68,29 +67,27 @@ def predict_investments(model, scaler, data):
     predictions = model.predict(X)
     data['RecommendationScore'] = predictions
     result = data[['Company', 'RecommendationScore']].sort_values(by='RecommendationScore', ascending=False)
-    result.columns = ['Name', 'RecommendationScore']  # Rename columns for display
+    result.columns = ['Name', 'RecommendationScore']
     return result
 
 def plot_histogram(data):
     fig = px.histogram(data, x='RecommendationScore', nbins=10,
                        title='Distribution of Recommendation Scores',
-                       color_discrete_sequence=['#1f77b4'])  # Blue color
+                       color_discrete_sequence=['#1f77b4'])
     st.plotly_chart(fig)
 
 def plot_line_chart(data):
     fig = px.line(data, x='Name', y='RecommendationScore',
                   title='Trend of Recommendation Scores',
-                  markers=True, color_discrete_sequence=['#ff7f0e'])  # Orange color
+                  markers=True, color_discrete_sequence=['#ff7f0e'])
     fig.update_layout(xaxis_title='Company', yaxis_title='Recommendation Score', xaxis_tickangle=-45)
     st.plotly_chart(fig)
 
-def main():
+def show_stock_prediction_page():
     st.title('Stock Recommendation Application')
 
-    # Load the ESG data from a CSV file
     esg_data = pd.read_csv('esg_data.csv')
 
-    # Simulate sentiment and time series data
     news_data = {
         'DIS': {'feed': [{'overall_sentiment_score': 0.5}, {'overall_sentiment_score': 0.7}]},
         'GM': {'feed': [{'overall_sentiment_score': 0.6}, {'overall_sentiment_score': 0.4}]},
@@ -107,41 +104,30 @@ def main():
     company_data = {
         'DIS': {'Time Series (Daily)': {'2024-07-30': {'4. close': '95.5'}, '2024-07-29': {'4. close': '96.0'}}},
         'GM': {'Time Series (Daily)': {'2024-07-30': {'4. close': '40.3'}, '2024-07-29': {'4. close': '41.0'}}},
-        'GWW': {'Time Series (Daily)': {'2024-07-30': {'4. close': '500.0'}, '2024-07-29': {'4. close': '510.0'}}},
-        'MHK': {'Time Series (Daily)': {'2024-07-30': {'4. close': '220.0'}, '2024-07-29': {'4. close': '225.0'}}},
-        'LYV': {'Time Series (Daily)': {'2024-07-30': {'4. close': '75.0'}, '2024-07-29': {'4. close': '77.0'}}},
-        'LVS': {'Time Series (Daily)': {'2024-07-30': {'4. close': '55.0'}, '2024-07-29': {'4. close': '56.0'}}},
-        'CLX': {'Time Series (Daily)': {'2024-07-30': {'4. close': '160.0'}, '2024-07-29': {'4. close': '162.0'}}},
-        'AACG': {'Time Series (Daily)': {'2024-07-30': {'4. close': '5.0'}, '2024-07-29': {'4. close': '5.5'}}},
-        'AAL': {'Time Series (Daily)': {'2024-07-30': {'4. close': '15.0'}, '2024-07-29': {'4. close': '15.5'}}},
-        'AAME': {'Time Series (Daily)': {'2024-07-30': {'4. close': '10.0'}, '2024-07-29': {'4. close': '10.5'}}}
+        'GWW': {'Time Series (Daily)': {'2024-07-30': {'4. close': '500.0'}, '2024-07-29': {'4. close': '495.5'}}},
+        'MHK': {'Time Series (Daily)': {'2024-07-30': {'4. close': '100.0'}, '2024-07-29': {'4. close': '101.0'}}},
+        'LYV': {'Time Series (Daily)': {'2024-07-30': {'4. close': '65.0'}, '2024-07-29': {'4. close': '66.0'}}},
+        'LVS': {'Time Series (Daily)': {'2024-07-30': {'4. close': '60.0'}, '2024-07-29': {'4. close': '61.0'}}},
+        'CLX': {'Time Series (Daily)': {'2024-07-30': {'4. close': '150.0'}, '2024-07-29': {'4. close': '151.0'}}},
+        'AACG': {'Time Series (Daily)': {'2024-07-30': {'4. close': '2.0'}, '2024-07-29': {'4. close': '2.1'}}},
+        'AAL': {'Time Series (Daily)': {'2024-07-30': {'4. close': '20.0'}, '2024-07-29': {'4. close': '21.0'}}},
+        'AAME': {'Time Series (Daily)': {'2024-07-30': {'4. close': '4.0'}, '2024-07-29': {'4. close': '4.1'}}}
     }
 
     esg_data = preprocess_esg_data(esg_data)
     sentiment_data = preprocess_sentiment_data(news_data)
     price_data = preprocess_time_series_data(company_data)
-
     merged_data = feature_engineering(esg_data, sentiment_data, price_data)
 
-    st.write("Merged Data:")
-    st.write(merged_data.head())
+    st.write("### Merged Data for Stock Recommendation")
+    st.dataframe(merged_data)
 
     model, scaler = train_model(merged_data)
-    predictions = predict_investments(model, scaler, merged_data)
 
-    # User input for the number of top stocks to display
-    n_stocks = st.slider("Select number of top stocks to display:", min_value=1, max_value=len(predictions), value=10)
+    recommended_investments = predict_investments(model, scaler, merged_data)
+    st.write("### Recommended Investments")
+    st.dataframe(recommended_investments)
 
-    st.write(f"Top {n_stocks} Recommended Stocks:")
-    st.write(predictions.head(n_stocks))
-
-    # Plot histogram
-    st.write("Histogram of Recommendation Scores:")
-    plot_histogram(predictions)
-
-    # Plot line chart
-    st.write("Trend of Recommendation Scores:")
-    plot_line_chart(predictions)
-
-if __name__ == "__main__":
-    main()
+    st.write("### Data Visualization")
+    plot_histogram(recommended_investments)
+    plot_line_chart(recommended_investments)
